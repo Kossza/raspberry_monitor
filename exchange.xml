@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration version="1.0">
+	<!-- 
+		In order to enable Scripting Agent:
+		- rename this file to ScriptingAgentConfig.xml
+		- edit it appropriately
+		- run the task: enable-CmdletExtensionAgent "Scripting Agent"
+
+		In order to include into your scriptlet characters prohibited in XML, use escape sequences, e.g.
+		"&lt;","&gt;","&amp;" for "less than", greater than" and "ampersand respectively.
+
+	-->
+
+
+
+
+<Feature Name="Welcome Email" Cmdlets="New-Mailbox,Enable-Mailbox">
+
+<ApiCall Name="OnComplete">
+
+if($succeeded) {
+
+if ($provisioningHandler.TaskName -eq "New-Mailbox") {
+
+<!-- # Replace place holder. -->
+
+$USRdname=$provisioningHandler.UserSpecifiedParameters["Name"]
+
+$tempmsg= [string] (get-content ("C:\root\BHS Trans\WelcomeHTML.htm"))
+
+$tempmsg = $tempmsg -replace "NewUser00",$USRdname
+
+<!-- # Picking Primary SMTP address,saving to $pSMTP to send email. -->
+
+$Ualias=$provisioningHandler.UserSpecifiedParameters["Alias"]
+
+$pSMTP = (get-mailbox $Ualias | select-object PrimarySMTPAddress | Format-Wide | Out-String ).trim()
+
+}
+
+elseif ($provisioningHandler.TaskName -eq "Enable-Mailbox") {
+
+<!-- # Picking Primary SMTP address,saving to $pSMTP to send email. -->
+
+$eUalias=$provisioningHandler.UserSpecifiedParameters["Alias"]
+
+$dName = (get-mailbox $eUalias | select-object Name | Format-Wide | Out-String ).trim()
+
+$pSMTP = (get-mailbox $eUalias | select-object PrimarySMTPAddress | Format-Wide | Out-String ).trim()
+
+<!-- # Replace place holder. -->
+
+$tempmsg= [string] (get-content ("c:\welcome\WelcomeMSG.htm"))
+
+$tempmsg = $tempmsg -replace "NewUser00",$dName
+
+}
+
+<!-- # Please give the correct HUB serve IP address in the following line. -->
+
+$HUBServer="192.168.33.188"
+
+$EMail =new-object net.mail.mailmessage
+
+$HUBTask = new-object net.mail.smtpclient($HUBServer)
+
+<!-- # Email with attachment will be sent from the address given in the following line. -->
+
+$EMail.From="welcome@kosabau.cloud"
+
+<!-- # Email with attachment will be sent TO the address given in the following line. -->
+
+$EMail.To.add($pSMTP)
+
+<!-- # Email Subject and Body details are specified in following lines -->
+
+$EMail.Subject="Welcome the BHS Trans !!!"
+
+$EMail.Body= $tempmsg
+
+$Email.IsBodyHtml = $true
+
+$HUBTask.send($EMail)
+
+}
+
+</ApiCall>
+
+</Feature>
+
+</Configuration>
